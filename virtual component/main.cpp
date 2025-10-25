@@ -43,11 +43,11 @@ public:
         const string p = msg->to_string();
         try {
             if (t == TOPIC1_VAL_TO_PUMP) {
-                cli_.publish(TOPIC2_PUMP_TO_VP, p, QOS, false);
-                cout << "[vc] BRIDGE INS  1->2 : " << t << " -> " << TOPIC2_PUMP_TO_VP << endl;
+                cli_.publish(TOPIC2_PUMP_TO_VP, p, QOS, true);
+                cout << "[vc] BRIDGE INS  1->2(retain) : " << t << " -> " << TOPIC2_PUMP_TO_VP << endl;
             } else if (t == TOPIC4_VP_TO_CGM) {
-                cli_.publish(TOPIC3_CGM_TO_VAL, p, QOS, false);
-                cout << "[vc] BRIDGE CGM  4->3 : " << t << " -> " << TOPIC3_CGM_TO_VAL << endl;
+                cli_.publish(TOPIC3_CGM_TO_VAL, p, QOS, true);
+                cout << "[vc] BRIDGE CGM  4->3(retain) : " << t << " -> " << TOPIC3_CGM_TO_VAL << endl;
             } else {
                 cout << "[vc] IGNORE: " << t << endl;
             }

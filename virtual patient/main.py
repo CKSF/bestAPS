@@ -4,11 +4,11 @@
 import sys, os, time, json
 import numpy as np
 from scipy.integrate import solve_ivp
-from dotenv import load_dotenv
+# from dotenv import load_dotenv  # removed (hardcoded config)
 from datetime import datetime
 from copy import deepcopy
 import traceback
-load_dotenv()
+# load_dotenv() removed (hardcoded config)
 
 from meals_model import Meals
 from insulin_model import Insulin
@@ -130,6 +130,7 @@ class VP_MQTT(MQTT):
                     'time': self.time_step * self.simu_interval,
                 }
                 self.client.publish(self.topics['CGM_TOPIC'], json.dumps(data), qos=1)
+                print(f"[VP] CGM published -> {self.topics['CGM_TOPIC']}: {json.dumps(data)}")
                 
                 # Dashboard for visualization
                 ts = self.time_step * self.simu_interval
@@ -154,26 +155,25 @@ class VP_MQTT(MQTT):
             self.disconnect()
     
     
+
 def main(no_sync=False):        
-    MQTT_HOST = os.getenv('MQTT_HOST')
-    MQTT_PORT = int(os.getenv('MQTT_PORT'))
-    USERNAME = os.getenv('USERNAME')
-    PASSWORD = os.getenv('PASSWORD')
+    # Hardcoded MQTT broker and credentials
+    MQTT_HOST = 'mqtt-dev.precise.seas.upenn.edu'
+    MQTT_PORT = 1883
+    USERNAME = 'cis441-541_2025'
+    PASSWORD = 'cukwy2-geNwit-puqced'
 
-    team_name = os.getenv('TEAM_NAME')
-    if team_name is None or team_name == '':
-        print('Error: TEAM_NAME is not set in the environment variables.')
-        sys.exit(1)
-
+    # Hardcoded TEAM and topic prefix
+    team_name = "BestAPS"
     topic_prefix = f'cis441-541/{team_name}'
 
     topics = {
         'VP_ATTRIBUTE_TOPIC': f'{topic_prefix}/vp-attributes',
         'VP_TELEMETRY_TOPIC': f'{topic_prefix}/vp-telemetry',
-        'INSULIN_TOPIC': os.getenv('INSULIN_TOPIC', f'{topic_prefix}/insulin-pump'),
-        'CGM_TOPIC': os.getenv('CGM_TOPIC', f'{topic_prefix}/cgm'),
+        'INSULIN_TOPIC': f'{topic_prefix}/insulin-pump',
+        'CGM_TOPIC': f'{topic_prefix}/cgm',
     }
-    print(f'>>> Topic settings from environment: \n{topics=}')
+    print(f'>>> Topic settings (hardcoded): \n{topics=}')
 
     profile = {}
     try:
