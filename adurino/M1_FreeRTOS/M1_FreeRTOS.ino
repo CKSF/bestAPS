@@ -266,7 +266,13 @@ void TaskOpenAPS(void* pv) {
     }
     if (hasNew) {
       float insulin_rate = (bg > 120.0f) ? 0.5f : 0.0f; // M1 placeholder
-      publishBasal(insulin_rate);
+      Serial.print("[OpenAPS] Computed basal bg="); Serial.print(bg);
+      Serial.print(" rate="); Serial.println(insulin_rate);
+      if (mqttClient.connected()) {
+        publishBasal(insulin_rate);
+      } else {
+        Serial.println("[OpenAPS] Skip publish (MQTT disconnected)");
+      }
     }
     vTaskDelay(pdMS_TO_TICKS(1000));
   }
