@@ -24,6 +24,7 @@ String TOPIC_INSULIN_P = PFX + "/insulin-pump-openaps"; // publish (per M2 Notes
 String ATTR_REQ        = PFX + "/vp-attributes/request/OpenAPS";
 String ATTR_RESP       = PFX + "/vp-attributes/response/OpenAPS";
 String SELFTEST = PFX + "/selftest";
+String TOPIC_CGM_RAW   = PFX + "/cgm";                 // also handle raw VP topic
 
 WiFiClient   wifiClient;
 MqttClient   mqttClient(wifiClient);
@@ -45,7 +46,7 @@ void onMqttMessage(int msgSize) {
   Serial.print("[MQTT] msg arrived topic="); Serial.print(topic);
   Serial.print(" len="); Serial.println(msgSize);
   
-  if (topic == TOPIC_CGM_SUB) {
+  if (topic == TOPIC_CGM_SUB || topic == TOPIC_CGM_RAW) {
     int gIdx = payload.indexOf("\"Glucose\"");
     int tIdx = payload.indexOf("\"time\"");
     if (gIdx >= 0 && tIdx >= 0) {
@@ -190,7 +191,7 @@ void TaskMQTT(void* pv) {
   int sub1 = mqttClient.subscribe(TOPIC_CGM_SUB, 1);
   int sub2 = mqttClient.subscribe(ATTR_RESP, 1);
   int subAll = mqttClient.subscribe(PFX + "/#", 1);
-  int subRaw = mqttClient.subscribe(PFX + "/cgm", 1);
+  int subRaw = mqttClient.subscribe(TOPIC_CGM_RAW, 1);
   int subSelf = mqttClient.subscribe(SELFTEST, 1);
   Serial.print("[MQTT] Subscribed CGM ret="); Serial.println(sub1);
   Serial.print("[MQTT] Subscribed ATTR ret="); Serial.println(sub2);
@@ -200,7 +201,7 @@ void TaskMQTT(void* pv) {
   Serial.print("[MQTT] Topics: CGM="); Serial.print(TOPIC_CGM_SUB);
   Serial.print(" ATTR="); Serial.print(ATTR_RESP);
   Serial.print(" ALL="); Serial.print(PFX + "/#");
-  Serial.print(" RAW="); Serial.print(PFX + "/cgm");
+  Serial.print(" RAW="); Serial.print(TOPIC_CGM_RAW);
   Serial.print(" SELF="); Serial.println(SELFTEST);
   Serial.print("[MQTT] FreeHeap(after sub)="); Serial.println(xPortGetFreeHeapSize());
 
@@ -242,7 +243,7 @@ void TaskMQTT(void* pv) {
       mqttClient.subscribe(TOPIC_CGM_SUB, 1);
       mqttClient.subscribe(ATTR_RESP, 1);
       mqttClient.subscribe(PFX + "/#", 1);
-      mqttClient.subscribe(PFX + "/cgm", 1); // also listen to raw VP topic for diagnostics
+      mqttClient.subscribe(TOPIC_CGM_RAW, 1); // also listen to raw VP topic for diagnostics
     }
     mqttClient.poll();
     if (millis() - lastPollLog > 2000) {
