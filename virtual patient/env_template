@@ -1,0 +1,12 @@
+# Description: Environment variables for the project
+# Usage: Copy this file to .env and fill in the values, .env files will be ignored by git for security
+TEAM_NAME=
+
+MQTT_HOST=
+MQTT_PORT=
+USERNAME=
+PASSWORD=
+
+# match the topic names with your OpenAPS and Virtual Components
+INSULIN_TOPIC=cis441-541/${TEAM_NAME}/insulin-pump
+CGM_TOPIC=cis441-541/${TEAM_NAME}/cgm

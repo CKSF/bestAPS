@@ -1,0 +1,216 @@
+CIS 4410 & 5410: Embedded Systems for Life Critical Applications
+Fall 2025
+Project 1 OpenAPS – Milestone 2
+
+目标：在 Arduino 上完成 OpenAPS 核心逻辑，实现与 Virtual Patient 的端到端评估。VC 继续作为桥接器，VP 提供患者仿真与属性数据。
+
+一、实现任务（Implementation Tasks）
+1) OpenAPS Class Methods – New in M2
+- insulin_calculations(long t)
+  内容：基于历史治疗（含 bolus）计算总 insulin activity 与 IOB（Insulin on Board）。
+  要点：每个治疗包含 time/dose/duration；计算时考虑当前时间 t 与 DIA；返回 pair<float,float>(activity, IOB)。
+- get_BG_forcast(float current_BG, float activity, float IOB)
+  内容：实现 EventualBG 算法，计算 naive_eventual_BG 与 eventual_BG；使用 ISF（Insulin Sensitivity Factor）。
+  要点：结合当前 BG、insulin 活动度、IOB 进行预测；返回 pair<float,float>(naive_eventual_BG, eventual_BG)。
+- get_basal_rate(long t, float current_BG)
+  内容：用上述结果决定基础胰岛素速率，比较 threshold_BG 与 target_BG；使用 ISF 与 DIA。
+  要点：返回 float basal_rate；别忘了将该 basal 作为治疗加入集合，以供后续 insulin_calculations 使用。
+
+2) MQTT Message Handling（Arduino）
+- 属性更新（Bolus Insulin） – Extended from M1
+  条件：收到属性话题、包含 PatientProfile，且 attributeReceived == false。
+  动作：解析 bolus_insulins，提取 time/dose/duration，构造 InsulinTreatment，调用 addInsulinTreatment。
+  标志：置 attributeReceived = true；可置 newInsulinTreatment = true；随后退订属性话题避免重复处理。
+- CGM 数据更新 – Extended from M1
+  条件：收到 CGM 话题消息。
+  动作：解析 Glucose 与 time，更新 current_BG、current_time；置 newBGData = true。
+
+3) FreeRTOS Tasks（Arduino）
+- TaskOpenAPS – Extended in M2
+  内容：处理新数据、计算 basal、发布到 MQTT。确保互斥或信号量同步。
+  发布：基于占位键格式，向 `{prefix}/insulin-pump-openaps` 发布 JSON：{"insulin_rate":<float>}
+- setup()
+  内容：初始化 Serial、WiFi、MQTT；创建 OpenAPS 类实例；设置 FreeRTOS 任务（至少 TaskOpenAPS、网络/MQTT 任务）。
+
+二、系统与话题（Topics & Flow）
+- 前缀：cis441-541/{TEAM_NAME}
+- VP（virtual patient/main.py）：订阅 `{prefix}/insulin-pump`；发布 `{prefix}/cgm`；属性握手 `{prefix}/vp-attributes/{request|response}/openaps`
+- VC（virtual component/main.cpp）：
+  - OpenAPS → VP： `{prefix}/insulin-pump-openaps` → `{prefix}/insulin-pump`
+  - VP → OpenAPS： `{prefix}/cgm` → `{prefix}/cgm-openaps`
+- Arduino（FreeRTOS）：发布 `{prefix}/insulin-pump-openaps`；订阅 `{prefix}/cgm-openaps`；处理属性握手
+
+三、运行与评估（Testing & Evaluation）
+- 启动顺序：VP → VC → Arduino（FreeRTOS 版）。
+- 默认患者 profile：展示四类 Basal Decision Logic 情况，并打印内部变量随时间：
+  - Case #1: currentBG < threshold || eventualBG < threshold
+  - Case #2-1: threshold <= eventualBG < target && naive_eventual_BG < 40
+  - Case #2-2: threshold <= eventualBG < target && naive_eventual_BG >= 40
+  - Case #3: eventualBG >= target
+  打印：t, currentBG, activity, IOB, naive_eventual_BG, eventual_BG, basal_rate
+- 其他场景：
+  - 非糖尿病患者：分别有/无 OpenAPS 的对比
+  - 患者侧错误：
+    - 额外 bolus 无餐（删除某次餐）
+    - 缺失某次餐的 bolus（删除某次 bolus）
+- 产出：每个场景的 profile 文件、仿真结束的 dashboard 截图（或曲线图）、串口与终端日志片段。
+
+四、仓库清理（Repo Hygiene）
+- 已删除：重复的根目录 `main.py`、用于本地调试的 `test_basic_communication.py`、`virtual patient/__pycache__/*.pyc`、演示用 `adurino/Test_Blink.ino`、与提交无关的 `virtual patient/view_subcutaneous_insulin_absorption.py`。
+- 保留：`virtual patient/main.py`、`patient_profile.json`、`.env_template`、`requirement.txt`；`virtual component/main.cpp` 与 `makefile`；`adurino/M1_FreeRTOS/M1_FreeRTOS.ino`（M2 必做），`M1_NoRTOS/M1_NoRTOS.ino`（M1 参考）。
+
+五、注意事项（Pitfalls & Notes）
+- VC 订阅阻塞：已移除 `->wait()`，避免 Paho C++ 异步模型卡死；如需可在连接回调中进行订阅以支持重连。
+- 话题一致性：Arduino 必须发布到 `insulin-pump-openaps`，VP 订阅 `insulin-pump`（经 VC 桥接），Arduino 订阅 `cgm-openaps`。
+- 属性握手：Arduino 在连接后主动请求；VP 返回含 bolus_insulins 的 PatientProfile；处理后退订属性话题。
+- 打印与证据：严格输出算法中间量与分支命中，便于 TA/LLM 审阅与复现。
+
+六、提交建议（Deliverables）
+- 代码：FreeRTOS 版 Arduino OpenAPS（含类与任务）、VC、VP；多患者 profile。
+- 文档：README.md（本文件）、M2_Report.pdf（算法与评估）、M2_Demo_Video.mp4（演示）。
+- 数据：日志与截图；必要时提供脚本用于生成指标与曲线图。
+
+原文：CIS 4410 & 5410:
+Embedded Systems for Life Critical Applications
+Fall 2025
+Project 1 OpenAPS – Milestone 2
+In milestone 1, you have implemented Virtual Components fully and OpenAPS partially, including
+some simplified functions. In milestone 2, you are to implement the core logic of OpenAPS and
+rewrite the simplified functions from milestone 1 into the full ones. You are to finalize the project by
+evaluating your OpenAPS Arduino Device with the Virtual Patient with various patient profiles.
+Part 1. OpenAPS
+In this part, you will complete the OpenAPS class in Arduino to implement the core logic of OpenAPS
+and extend the simplified functions from milestone 1 to bridge the data path between the MQTT
+handlers and OpenAPS class functions.
+Implementation Tasks
+1. OpenAPS Class Methods – New in Milestone 2
+insulin_calculations(long t)
+- Implement the calculation of total insulin activity and IOB (Insulin on Board) based on past
+insulin treatments (including the bolus treatments). Consider the time, amount, and duration
+of each insulin treatment. Return a pair of floats representing total activity and total IOB.
+get_BG_forcast(float current_BG, float activity, float IOB)
+- Implement the EventualBG algorithm to predict future blood glucose levels. Calculate
+naive_eventual_BG and eventual_BG using the provided ISF (Insulin Sensitivity Factor).
+Consider the current BG, insulin activity, and IOB in your calculations. Return a pair of floats
+for naive_eventual_BG and eventual_BG.
+get_basal_rate(long t, float current_BG)
+- Use the results from insulin_calculations and get_BG_forecast to determine the appropriate
+basal insulin rate. Implement control logic based on BG levels, comparing with threshold_BG
+and target_BG. Return the calculated basal rate as a float type. You will need to use ISF and
+DIA here. Don’t forget to add this basal rate as a treatment for future insulin calculations.
+2. MQTT Message Handling
+onMqttMessage callback function is to handle different types of incoming messages:
+- Attribute Updates (Bolus Insulin) – Extended in Milestone 2 from Milestone 1:
+When receiving a message on the attribute topic, first check if it contains the "PatientProfile"
+information and if the `attributeReceived` flag is false. If these conditions are met, you'll need
+to parse the "bolus_insulins" data from the payload. For each entry, extract the time, dose,
+and duration values. Use this information to create new InsulinTreatment objects and add
+them to the OpenAPS instance using the `addInsulinTreatment` method.
+After processing all the insulin treatments, set the `attributeReceived` flag to true. This
+indicates that the attribute data has been received and processed, preventing redundant
+processing of the same data. You may also want to set the `newInsulinTreatment` flag to true,
+signaling that new treatment data is available for processing. Unsubscribe from the attribute
+topic at this point to avoid receiving unnecessary updates in the future.
+- CGM Data Updates – Extended in Milestone 2 from Milestone 1:
+For CGM data updates, check if the incoming message is on the CGM topic. When a CGM
+message is received, extract the glucose value and timestamp from the payload.
+Once you've extracted the glucose value and timestamp, update the `current_BG` and
+`current_time` variables in your program with these new values. After updating these
+variables, set the `newBGData` flag to true. This flag indicates that new blood glucose data is
+available for processing by the OpenAPS algorithm.
+3. FreeRTOS Tasks
+TaskOpenAPS – Extended in Milestone 2 from Milestone 1
+- This task processes new data, calculates basal rates, and publishes results to MQTT.
+Remember to include the correct key format when publishing basal rates to the virtual
+component. Ensure synchronization using mutex or semaphores.
+4. Setup Function
+The setup function initializes serial communication, WiFi connection, and MQTT client.
+Create an instance of the OpenAPS class (New in Milestone 2) and then set up tasks in
+this function.
+Part 2. Final Testing and Evaluation
+Testing
+Please follow Section “Part 3” in the Project Overview document.
+Evaluation
+Please evaluate the implementation of your OpenAPS with various patient profiles. For each different
+profile, attach the profile and the screen capture of the dashboard at the end of the simulation.
+1. With the default patient’s profile, show that your OpenAPS covers all the possible “Basal
+Decision Logic” cases. You should print out the internal variables (currentBG, eventualBG,
+and naive_eventualBG) with the simulation time as proof. There are four cases:
+a. b. c. d. Case #1: currentBG < threshold || eventualBG < threshold
+Case #2-1: threshold <= eventualBG < target && naive_eventualBG < 40
+Case #2-2: threshold <= eventualBG < target && naive_eventualBG >= 40
+Case #3: eventualBG >= target
+2. Non-diabetic patient profile with OpenAPS and without OpenAPS.
+3. Behavior of OpenAPS with the patient-side mistakes:
+a. A diabetic patient profile that has an extra bolus without a meal (by removing one of
+the meals in the middle).
+b. A diabetic patient profile that has a missing bolus for a meal (by removing one of the
+boluses in the middle).
+Example answer:
+Evaluation 1.
+Profile:
+{
+"diabetic": true,
+"meals": [
+{
+"time": 450,
+"duration": 90,
+"carbs": 360
+},
+{
+"time": 750,
+"duration": 120,
+"carbs": 360
+},
+{
+"time": 930,
+"duration": 90,
+"carbs": 180
+},
+{
+"time": 1110,
+"duration": 150,
+"carbs": 420
+}
+],
+{
+"bolus_insulins": [
+"time": 450,
+"dose": 36,
+"duration": 30
+},
+{
+"time": 750,
+"dose": 36,
+"duration": 30
+},
+{
+"time": 930,
+"dose": 18,
+"duration": 30
+},
+{
+"time": 1110,
+"dose": 42,
+"duration": 30
+}
+],
+"bergman_param": {},
+"sim_settings": {
+"disp_interval": 0.3,
+"simu_interval": 5,
+"simu_length": 300,
+"init_state": {
+"G0": 110,
+"X0": 0,
+"I0": 15
+}
+}
+}
+a. Case #1: currentBG < threshold || eventualBG < threshold
+Time: 565, Current BG: 123.72, Naive BG: 75.14, Eventual BG: -19.98
+Due: 11:59 pm, Friday, 24 October 2025
+Submission instructions:
+Please submit all of your code in a zip file with a detailed README to Canvas by the deadline given
+above. Attach a screen capture video of the real-time plot on Codio dashboard, and a Write-up
+explaining the evaluation results specified in Part 2 to your submission.

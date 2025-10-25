@@ -1,0 +1,58 @@
+{
+    "diabetic": true,
+    "meals": [
+      {
+        "time": 450,
+        "duration": 90,
+        "carbs": 360
+      },
+      {
+        "time": 750,
+        "duration": 120,
+        "carbs": 360
+      },
+      {
+        "time": 930,
+        "duration": 90,
+        "carbs": 180
+      },
+      {
+        "time": 1110,
+        "duration": 150,
+        "carbs": 420
+      }
+    ],
+    "bolus_insulins": [
+      {
+        "time": 450,
+        "dose": 36,
+        "duration": 30
+      },
+      {
+        "time": 750,
+        "dose": 36,
+        "duration": 30
+      },
+      {
+        "time": 930,
+        "dose": 18,
+        "duration": 30
+      },
+      {
+        "time": 1110,
+        "dose": 42,
+        "duration": 30
+      }
+    ],
+    "bergman_param": {},
+    "sim_settings": {
+      "disp_interval": 0.3,
+      "simu_interval": 5,
+      "simu_length": 300,
+      "init_state": {
+        "G0": 110,
+        "X0": 0,
+        "I0": 15
+      }
+    }
+  }

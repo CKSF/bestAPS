@@ -1,0 +1,32 @@
+# macOS cruft
+.DS_Store
+.AppleDouble
+.fseventsd
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.env
+virtual patient/__pycache__/
+virtual patient/*.pyc
+virtual patient/.env
+
+# Virtual Component (C++ build artifacts)
+virtual component/*.o
+virtual component/main
+
+# Arduino/IDE temp (usually outside repo, but safe)
+*.bin
+*.hex
+*.elf
+build/
+.cache/
+
+# Logs
+*.log
+
+# Misc
+*.swp
+*.swo
