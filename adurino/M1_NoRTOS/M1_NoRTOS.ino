@@ -193,7 +193,13 @@ void loop() {
 
   if (newBGData) {
     float insulin_rate = (current_BG > 120.0f) ? 0.5f : 0.0f; // M1 placeholder
-    publishBasal(insulin_rate);
+    Serial.print("[OpenAPS] Computed basal bg="); Serial.print(current_BG);
+    Serial.print(" rate="); Serial.println(insulin_rate);
+    if (mqttClient.connected()) {
+      publishBasal(insulin_rate);
+    } else {
+      Serial.println("[OpenAPS] Skip publish (MQTT disconnected)");
+    }
     newBGData = false;
   }
   delay(100);

@@ -47,6 +47,8 @@ void onMqttMessage(int msgSize) {
   Serial.print(" len="); Serial.println(msgSize);
   
   if (topic == TOPIC_CGM_SUB || topic == TOPIC_CGM_RAW) {
+    // Always log raw CGM payload to diagnose format/case mismatches
+    Serial.print("[OpenAPS] CGM raw payload: "); Serial.println(payload);
     int gIdx = payload.indexOf("\"Glucose\"");
     int tIdx = payload.indexOf("\"time\"");
     if (gIdx >= 0 && tIdx >= 0) {
@@ -65,9 +67,14 @@ void onMqttMessage(int msgSize) {
         Serial.print("[OpenAPS] CGM: BG="); Serial.print(g);
         Serial.print(" time="); Serial.println(ts);
       }
+    } else {
+      Serial.print("[OpenAPS] CGM missing fields -> Glucose? "); Serial.print(gIdx >= 0);
+      Serial.print(" time? "); Serial.println(tIdx >= 0);
     }
-  } else if (topic == ATTR_RESP) {
-    Serial.println("[OpenAPS] vp-attributes response received (M1 ignore). ");
+  } else if (topic == ATTR_RESP || topic.startsWith(PFX + "/vp-attributes/response/")) {
+    // Accept both OpenAPS/openaps cases and log full payload
+    Serial.print("[OpenAPS] vp-attributes response on "); Serial.print(topic);
+    Serial.print(" payload="); Serial.println(payload);
   } else if (topic == SELFTEST) {
     Serial.print("[MQTT] Selftest echoed: "); Serial.println(payload);
   } else {

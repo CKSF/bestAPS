@@ -4,8 +4,8 @@
 
 # Compiler and flags
 CC = g++
-CPPFLAGS = -pthread -Wall
-LDFLAGS = -lpthread -lpaho-mqtt3as -lpaho-mqttpp3
+CPPFLAGS = -pthread -Wall -I/opt/homebrew/include
+LDFLAGS = -L/opt/homebrew/lib -lpthread -lpaho-mqtt3as -lpaho-mqttpp3
 
 # Programs
 PROG = main
